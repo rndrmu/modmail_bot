@@ -13,6 +13,7 @@ const INTENTS: GatewayIntents = GatewayIntents::from_bits_truncate(
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    dotenv::dotenv().ok();
     let token = std::env::var("DISCORD_TOKEN").context("DISCORD_TOKEN missing")?;
     let appid: u64 = std::env::var("DISCORD_APPID")
         .context("DISCORD_APPID missing")?
