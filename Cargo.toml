@@ -1,0 +1,33 @@
+[package]
+name = "modmail"
+authors = ["Liam Marin <liam.marin03926@protonmail.com>"]
+version = "0.1.0"
+edition = "2021"
+description = "Discord bot for contacting a server's moderators easily and anonymously."
+readme = "README.md"
+homepage = "https://github.com/eficats/modmail"
+repository = "https://github.com/eficats/modmail"
+license = "GPL-3.0-or-later"
+publish = false
+
+[dependencies]
+anyhow = "1.0"
+dotenv = "0.15"
+
+[dependencies.petname]
+version = "1.1"
+default-features = false
+features = ["default_dictionary", "std_rng"]
+
+[dependencies.serenity]
+version = "0.11"
+default-features = false
+features = ["rustls_backend", "client", "gateway", "http", "model", "unstable_discord_api"]
+
+[dependencies.sqlx]
+version = "0.5"
+features = ["runtime-tokio-rustls", "sqlite", "macros", "migrate"]
+
+[dependencies.tokio]
+version = "1.17"
+features = ["rt", "rt-multi-thread", "macros", "sync"]

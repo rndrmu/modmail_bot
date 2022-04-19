@@ -1,0 +1,9 @@
+CREATE TABLE config (
+    key TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);
+CREATE TABLE threads (
+    codename TEXT NOT NULL UNIQUE,
+    thread TEXT NOT NULL UNIQUE,
+    user TEXT NOT NULL UNIQUE
+);
