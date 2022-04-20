@@ -66,7 +66,7 @@ impl EventHandler for Bot {
                         .kind(ApplicationCommandType::ChatInput)
                         .create_option(|opt| {
                             opt.name("set")
-                                .description("Set the role.")
+                                .description("Set the role given to blocked users.")
                                 .kind(ApplicationCommandOptionType::SubCommand)
                                 .create_sub_option(|sub| {
                                     sub.name("role")
@@ -77,7 +77,7 @@ impl EventHandler for Bot {
                         })
                         .create_option(|opt| {
                             opt.name("unset")
-                                .description("Unset the role.")
+                                .description("Unset the block role.")
                                 .kind(ApplicationCommandOptionType::SubCommand)
                         })
                 })
@@ -87,7 +87,7 @@ impl EventHandler for Bot {
                         .kind(ApplicationCommandType::ChatInput)
                         .create_option(|opt| {
                             opt.name("set")
-                                .description("Set the channel.")
+                                .description("Set the channel threads will be added to.")
                                 .kind(ApplicationCommandOptionType::SubCommand)
                                 .create_sub_option(|sub| {
                                     sub.name("channel")
@@ -99,7 +99,7 @@ impl EventHandler for Bot {
                         })
                         .create_option(|opt| {
                             opt.name("unset")
-                                .description("Unset the channel.")
+                                .description("Unset the inbox channel.")
                                 .kind(ApplicationCommandOptionType::SubCommand)
                         })
                 })
