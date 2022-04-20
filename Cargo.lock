@@ -675,6 +675,7 @@ dependencies = [
  "petname",
  "serenity",
  "sqlx",
+ "thiserror",
  "tokio",
 ]
 
