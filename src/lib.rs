@@ -1,3 +1,5 @@
+use std::num::ParseIntError;
+
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
@@ -8,7 +10,7 @@ use serenity::{
         interactions::application_command::{ApplicationCommandOptionType, ApplicationCommandType},
     },
 };
-use sqlx::{sqlite::SqliteQueryResult, SqlitePool};
+use sqlx::{sqlite::SqliteQueryResult, FromRow, SqlitePool};
 
 pub struct Bot {
     guild: u64,
@@ -117,5 +119,30 @@ impl EventHandler for Bot {
             })
             .await
             .expect("failed to register commands");
+    }
+}
+
+#[derive(FromRow)]
+struct RawThread {
+    codename: String,
+    thread: String,
+    user: String,
+}
+
+struct Thread {
+    codename: String,
+    thread: u64,
+    user: u64,
+}
+
+impl TryFrom<RawThread> for Thread {
+    type Error = ParseIntError;
+
+    fn try_from(value: RawThread) -> Result<Self, Self::Error> {
+        Ok(Self {
+            codename: value.codename,
+            thread: value.thread.parse()?,
+            user: value.user.parse()?,
+        })
     }
 }
