@@ -21,6 +21,7 @@ impl Bot {
     pub fn new(pool: SqlitePool, guild: u64) -> Self {
         Self { pool, guild }
     }
+
     async fn config(&self, key: &str) -> sqlx::Result<Option<String>> {
         Ok(sqlx::query!("SELECT value FROM config WHERE key = ?", key)
             .fetch_optional(&self.pool)
