@@ -1,4 +1,4 @@
-use std::num::ParseIntError;
+use std::{num::ParseIntError, result::Result as StdResult};
 
 use serenity::{
     async_trait,
@@ -23,6 +23,8 @@ enum BotError {
     InternalError(#[from] anyhow::Error),
 }
 
+type Result<T> = StdResult<T, BotError>;
+
 pub struct Bot {
     guild: u64,
     pool: SqlitePool,
@@ -33,14 +35,15 @@ impl Bot {
         Self { pool, guild }
     }
 
-    async fn config(&self, key: &str) -> sqlx::Result<Option<String>> {
+    async fn config(&self, key: &str) -> Result<Option<String>> {
         Ok(sqlx::query!("SELECT value FROM config WHERE key = ?", key)
             .fetch_optional(&self.pool)
-            .await?
+            .await
+            .map_err(anyhow::Error::from)?
             .map(|r| r.value))
     }
 
-    async fn set_config(&self, key: &str, value: &str) -> sqlx::Result<()> {
+    async fn set_config(&self, key: &str, value: &str) -> Result<()> {
         let res = sqlx::query!(
             "INSERT INTO config (key, value) VALUES (?, ?)
             ON CONFLICT (key) DO UPDATE SET value = excluded.value",
@@ -48,74 +51,79 @@ impl Bot {
             value
         )
         .execute(&self.pool)
-        .await?;
+        .await
+        .map_err(anyhow::Error::from)?;
         assert_eq!(res.rows_affected(), 1u64);
         Ok(())
     }
 
-    async fn unset_config(&self, key: &str) -> sqlx::Result<()> {
+    async fn unset_config(&self, key: &str) -> Result<()> {
         let res = sqlx::query!("DELETE FROM config WHERE key = ?", key)
             .execute(&self.pool)
-            .await?;
+            .await
+            .map_err(anyhow::Error::from)?;
         assert_eq!(res.rows_affected(), 1u64);
         Ok(())
     }
 
-    async fn get_blockrole(&self) -> sqlx::Result<Option<RoleId>> {
+    async fn get_blockrole(&self) -> Result<Option<RoleId>> {
         let raw = self.config("blockrole").await?;
         Ok(raw.map(|s| RoleId(s.parse().expect("got malformed ID from database"))))
     }
 
-    async fn set_blockrole(&self, role: &Role) -> sqlx::Result<()> {
+    async fn set_blockrole(&self, role: &Role) -> Result<()> {
         let id = role.id.0.to_string();
         self.set_config("blockrole", &id).await
     }
 
-    async fn unset_blockrole(&self) -> sqlx::Result<()> {
+    async fn unset_blockrole(&self) -> Result<()> {
         self.unset_config("blockrole").await
     }
 
-    async fn get_inbox(&self) -> sqlx::Result<Option<ChannelId>> {
+    async fn get_inbox(&self) -> Result<Option<ChannelId>> {
         let raw = self.config("inbox").await?;
         Ok(raw.map(|s| ChannelId(s.parse().expect("got malformed ID from database"))))
     }
 
-    async fn set_inbox(&self, channel: &PartialChannel) -> sqlx::Result<()> {
+    async fn set_inbox(&self, channel: &PartialChannel) -> Result<()> {
         let id = channel.id.0.to_string();
         self.set_config("inbox", &id).await
     }
 
-    async fn unset_inbox(&self) -> sqlx::Result<()> {
+    async fn unset_inbox(&self) -> Result<()> {
         self.unset_config("inbox").await
     }
 
-    async fn find_codename(&self, codename: &str) -> sqlx::Result<Option<Thread>> {
+    async fn find_codename(&self, codename: &str) -> Result<Option<Thread>> {
         Ok(sqlx::query_as!(
             RawThread,
             "SELECT * FROM threads WHERE codename = ?",
             codename
         )
         .fetch_optional(&self.pool)
-        .await?
+        .await
+        .map_err(anyhow::Error::from)?
         .map(|rt| Thread::try_from(rt).expect("got malformed thread from database")))
     }
 
-    async fn find_thread(&self, id: u64) -> sqlx::Result<Option<Thread>> {
+    async fn find_thread(&self, id: u64) -> Result<Option<Thread>> {
         let temp = &id.to_string();
         Ok(
             sqlx::query_as!(RawThread, "SELECT * FROM threads WHERE thread = ?", temp)
                 .fetch_optional(&self.pool)
-                .await?
+                .await
+                .map_err(anyhow::Error::from)?
                 .map(|rt| Thread::try_from(rt).expect("got malformed thread from database")),
         )
     }
 
-    async fn find_user(&self, id: u64) -> sqlx::Result<Option<Thread>> {
+    async fn find_user(&self, id: u64) -> Result<Option<Thread>> {
         let temp = &id.to_string();
         Ok(
             sqlx::query_as!(RawThread, "SELECT * FROM threads WHERE user = ?", temp)
                 .fetch_optional(&self.pool)
-                .await?
+                .await
+                .map_err(anyhow::Error::from)?
                 .map(|rt| Thread::try_from(rt).expect("got malformed thread from database")),
         )
     }
@@ -213,7 +221,7 @@ struct Thread {
 impl TryFrom<RawThread> for Thread {
     type Error = ParseIntError;
 
-    fn try_from(value: RawThread) -> Result<Self, Self::Error> {
+    fn try_from(value: RawThread) -> StdResult<Self, Self::Error> {
         Ok(Self {
             codename: value.codename,
             thread: value.thread.parse()?,
