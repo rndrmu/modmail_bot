@@ -4,9 +4,10 @@ use serenity::{
     async_trait,
     client::{Context, EventHandler},
     model::{
-        channel::ChannelType,
+        channel::{ChannelType, PartialChannel},
         gateway::Ready,
-        id::GuildId,
+        guild::{PartialMember, Role},
+        id::{ChannelId, GuildId, RoleId},
         interactions::application_command::{ApplicationCommandOptionType, ApplicationCommandType},
     },
 };
@@ -44,6 +45,34 @@ impl Bot {
         sqlx::query!("DELETE FROM config WHERE key = ?", key)
             .execute(&self.pool)
             .await
+    }
+
+    async fn get_blockrole(&self) -> sqlx::Result<Option<RoleId>> {
+        let raw = self.config("blockrole").await?;
+        Ok(raw.map(|s| RoleId(s.parse().expect("got malformed ID from database"))))
+    }
+
+    async fn set_blockrole(&self, role: &Role) -> sqlx::Result<SqliteQueryResult> {
+        let id = role.id.0.to_string();
+        self.set_config("blockrole", &id).await
+    }
+
+    async fn unset_blockrole(&self) -> sqlx::Result<SqliteQueryResult> {
+        self.unset_config("blockrole").await
+    }
+
+    async fn get_inbox(&self) -> sqlx::Result<Option<ChannelId>> {
+        let raw = self.config("inbox").await?;
+        Ok(raw.map(|s| ChannelId(s.parse().expect("got malformed ID from database"))))
+    }
+
+    async fn set_inbox(&self, channel: &PartialChannel) -> sqlx::Result<SqliteQueryResult> {
+        let id = channel.id.0.to_string();
+        self.set_config("inbox", &id).await
+    }
+
+    async fn unset_inbox(&self) -> sqlx::Result<SqliteQueryResult> {
+        self.unset_config("inbox").await
     }
 }
 
