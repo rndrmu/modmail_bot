@@ -13,6 +13,16 @@ use serenity::{
 };
 use sqlx::{FromRow, SqlitePool};
 
+#[derive(thiserror::Error, Debug)]
+enum BotError {
+    #[error("{0}")]
+    UserError(String),
+    #[error("You sent an unknown subcommand. Please contact the developer.")]
+    UnknownSubcommand(String),
+    #[error("There was an error processing your command.")]
+    InternalError(#[from] anyhow::Error),
+}
+
 pub struct Bot {
     guild: u64,
     pool: SqlitePool,
