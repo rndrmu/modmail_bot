@@ -6,7 +6,7 @@ use serenity::{
     model::{
         channel::{ChannelType, PartialChannel},
         gateway::Ready,
-        guild::{PartialMember, Role},
+        guild::Role,
         id::{ChannelId, GuildId, RoleId},
         interactions::application_command::{ApplicationCommandOptionType, ApplicationCommandType},
     },
