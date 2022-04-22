@@ -11,7 +11,7 @@ use serenity::{
         interactions::application_command::{ApplicationCommandOptionType, ApplicationCommandType},
     },
 };
-use sqlx::{sqlite::SqliteQueryResult, FromRow, SqlitePool};
+use sqlx::{FromRow, SqlitePool};
 
 pub struct Bot {
     guild: u64,
@@ -30,21 +30,25 @@ impl Bot {
             .map(|r| r.value))
     }
 
-    async fn set_config(&self, key: &str, value: &str) -> sqlx::Result<SqliteQueryResult> {
-        sqlx::query!(
+    async fn set_config(&self, key: &str, value: &str) -> sqlx::Result<()> {
+        let res = sqlx::query!(
             "INSERT INTO config (key, value) VALUES (?, ?)
             ON CONFLICT (key) DO UPDATE SET value = excluded.value",
             key,
             value
         )
         .execute(&self.pool)
-        .await
+        .await?;
+        assert_eq!(res.rows_affected(), 1u64);
+        Ok(())
     }
 
-    async fn unset_config(&self, key: &str) -> sqlx::Result<SqliteQueryResult> {
-        sqlx::query!("DELETE FROM config WHERE key = ?", key)
+    async fn unset_config(&self, key: &str) -> sqlx::Result<()> {
+        let res = sqlx::query!("DELETE FROM config WHERE key = ?", key)
             .execute(&self.pool)
-            .await
+            .await?;
+        assert_eq!(res.rows_affected(), 1u64);
+        Ok(())
     }
 
     async fn get_blockrole(&self) -> sqlx::Result<Option<RoleId>> {
@@ -52,12 +56,12 @@ impl Bot {
         Ok(raw.map(|s| RoleId(s.parse().expect("got malformed ID from database"))))
     }
 
-    async fn set_blockrole(&self, role: &Role) -> sqlx::Result<SqliteQueryResult> {
+    async fn set_blockrole(&self, role: &Role) -> sqlx::Result<()> {
         let id = role.id.0.to_string();
         self.set_config("blockrole", &id).await
     }
 
-    async fn unset_blockrole(&self) -> sqlx::Result<SqliteQueryResult> {
+    async fn unset_blockrole(&self) -> sqlx::Result<()> {
         self.unset_config("blockrole").await
     }
 
@@ -66,12 +70,12 @@ impl Bot {
         Ok(raw.map(|s| ChannelId(s.parse().expect("got malformed ID from database"))))
     }
 
-    async fn set_inbox(&self, channel: &PartialChannel) -> sqlx::Result<SqliteQueryResult> {
+    async fn set_inbox(&self, channel: &PartialChannel) -> sqlx::Result<()> {
         let id = channel.id.0.to_string();
         self.set_config("inbox", &id).await
     }
 
-    async fn unset_inbox(&self) -> sqlx::Result<SqliteQueryResult> {
+    async fn unset_inbox(&self) -> sqlx::Result<()> {
         self.unset_config("inbox").await
     }
 
