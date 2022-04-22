@@ -14,6 +14,7 @@ const INTENTS: GatewayIntents = GatewayIntents::from_bits_truncate(
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv::dotenv().ok();
+    tracing_subscriber::fmt().init();
     let token = std::env::var("DISCORD_TOKEN").context("DISCORD_TOKEN missing")?;
     let appid: u64 = std::env::var("DISCORD_APPID")
         .context("DISCORD_APPID missing")?
@@ -32,7 +33,13 @@ async fn main() -> anyhow::Result<()> {
         let pool = SqlitePoolOptions::new()
             .max_lifetime(Duration::from_secs(3600))
             .max_connections(2)
-            .connect_lazy_with(opts);
+            .connect_with(opts)
+            .await
+            .context("failed to connect to DB")?;
+        sqlx::migrate!()
+            .run(&pool)
+            .await
+            .context("failed to migrate")?;
         Bot::new(pool, guild)
     };
 
