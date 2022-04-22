@@ -74,6 +74,37 @@ impl Bot {
     async fn unset_inbox(&self) -> sqlx::Result<SqliteQueryResult> {
         self.unset_config("inbox").await
     }
+
+    async fn find_codename(&self, codename: &str) -> sqlx::Result<Option<Thread>> {
+        Ok(sqlx::query_as!(
+            RawThread,
+            "SELECT * FROM threads WHERE codename = ?",
+            codename
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .map(|rt| Thread::try_from(rt).expect("got malformed thread from database")))
+    }
+
+    async fn find_thread(&self, id: u64) -> sqlx::Result<Option<Thread>> {
+        let temp = &id.to_string();
+        Ok(
+            sqlx::query_as!(RawThread, "SELECT * FROM threads WHERE thread = ?", temp)
+                .fetch_optional(&self.pool)
+                .await?
+                .map(|rt| Thread::try_from(rt).expect("got malformed thread from database")),
+        )
+    }
+
+    async fn find_user(&self, id: u64) -> sqlx::Result<Option<Thread>> {
+        let temp = &id.to_string();
+        Ok(
+            sqlx::query_as!(RawThread, "SELECT * FROM threads WHERE user = ?", temp)
+                .fetch_optional(&self.pool)
+                .await?
+                .map(|rt| Thread::try_from(rt).expect("got malformed thread from database")),
+        )
+    }
 }
 
 #[async_trait]
