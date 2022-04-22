@@ -7,7 +7,7 @@ use serenity::{
         channel::{ChannelType, PartialChannel},
         gateway::Ready,
         guild::Role,
-        id::{ChannelId, GuildId, RoleId},
+        id::{ChannelId, GuildId, RoleId, UserId},
         interactions::application_command::{ApplicationCommandOptionType, ApplicationCommandType},
     },
 };
@@ -26,13 +26,19 @@ enum BotError {
 type Result<T> = StdResult<T, BotError>;
 
 pub struct Bot {
-    guild: u64,
+    guild: GuildId,
     pool: SqlitePool,
 }
 
 impl Bot {
-    pub fn new(pool: SqlitePool, guild: u64) -> Self {
-        Self { pool, guild }
+    pub fn new<T>(pool: SqlitePool, guild: T) -> Self
+    where
+        T: Into<GuildId>,
+    {
+        Self {
+            pool,
+            guild: guild.into(),
+        }
     }
 
     async fn config(&self, key: &str) -> Result<Option<String>> {
@@ -53,6 +59,7 @@ impl Bot {
         .execute(&self.pool)
         .await
         .map_err(anyhow::Error::from)?;
+
         assert_eq!(res.rows_affected(), 1u64);
         Ok(())
     }
@@ -62,6 +69,7 @@ impl Bot {
             .execute(&self.pool)
             .await
             .map_err(anyhow::Error::from)?;
+
         assert_eq!(res.rows_affected(), 1u64);
         Ok(())
     }
@@ -132,7 +140,7 @@ impl Bot {
 #[async_trait]
 impl EventHandler for Bot {
     async fn ready(&self, ctx: Context, _: Ready) {
-        GuildId(self.guild)
+        self.guild
             .set_application_commands(&ctx, |cmds| {
                 cmds.create_application_command(|cmd| {
                     cmd.name("block")
@@ -214,8 +222,8 @@ struct RawThread {
 
 struct Thread {
     codename: String,
-    thread: u64,
-    user: u64,
+    thread: ChannelId,
+    user: UserId,
 }
 
 impl TryFrom<RawThread> for Thread {
@@ -224,8 +232,8 @@ impl TryFrom<RawThread> for Thread {
     fn try_from(value: RawThread) -> StdResult<Self, Self::Error> {
         Ok(Self {
             codename: value.codename,
-            thread: value.thread.parse()?,
-            user: value.user.parse()?,
+            thread: value.thread.parse::<u64>()?.into(),
+            user: value.user.parse::<u64>()?.into(),
         })
     }
 }
