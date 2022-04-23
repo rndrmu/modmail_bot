@@ -271,13 +271,13 @@ impl Bot {
                         })
                     })?;
 
-                    let mut member = self.guild.member(&ctx, room.user_id).await.map_err(|_| {
+                    let mut member = self.guild.member(ctx, room.user_id).await.map_err(|_| {
                         BotError::UserError(
                             "User is not a member or the server is unavailable.".into(),
                         )
                     })?;
 
-                    member.add_role(&ctx, role).await.map_err(|_| {
+                    member.add_role(ctx, role).await.map_err(|_| {
                         BotError::UserError(
                             "Missing permissions or configured block role is invalid.".into(),
                         )
@@ -309,7 +309,7 @@ impl Bot {
 
                     let _ = room
                         .channel_id
-                        .edit_thread(&ctx, |edit| edit.locked(true))
+                        .edit_thread(ctx, |edit| edit.locked(true))
                         .await;
 
                     self.delete_room(room.room_id).await?;
