@@ -4,7 +4,7 @@ use serenity::{
     async_trait,
     client::{Context, EventHandler},
     model::{
-        channel::{ChannelType, Message, PartialChannel},
+        channel::{ChannelType, Message, PartialChannel, PartialGuildChannel},
         gateway::Ready,
         guild::Role,
         id::{ChannelId, GuildId, RoleId, UserId},
@@ -531,6 +531,23 @@ impl EventHandler for Bot {
                 }
             }
             Err(err) => tracing::error!(source = ?err, "Error while handling message."),
+        }
+    }
+
+    async fn thread_delete(&self, _: Context, thread: PartialGuildChannel) {
+        let res = match self.room_from_channel(thread.id.0).await {
+            Ok(opt) => {
+                if let Some(room) = opt {
+                    self.delete_room(room.room_id).await
+                } else {
+                    return;
+                }
+            }
+            Err(e) => Err(e),
+        };
+
+        if let Err(e) = res {
+            tracing::error!(source = ?e, "Error while handling thread deletion.");
         }
     }
 }
