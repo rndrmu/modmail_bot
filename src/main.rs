@@ -8,7 +8,8 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 const INTENTS: GatewayIntents = GatewayIntents::from_bits_truncate(
     GatewayIntents::DIRECT_MESSAGES.bits()
         | GatewayIntents::GUILD_MESSAGES.bits()
-        | GatewayIntents::GUILDS.bits(),
+        | GatewayIntents::GUILDS.bits()
+        | GatewayIntents::MESSAGE_CONTENT.bits(),
 );
 
 #[tokio::main]
