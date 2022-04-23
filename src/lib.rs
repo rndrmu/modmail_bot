@@ -149,6 +149,37 @@ impl Bot {
         Ok(())
     }
 
+    async fn new_room(&self, channel_id: u64, user_id: u64) -> Result<()> {
+        let codename = &loop {
+            let candidate = petname::petname(2, "-");
+            // HACK: macro doesn't work, treats EXISTS() as a column name
+            let (exists,): (bool,) =
+                sqlx::query_as("SELECT EXISTS(SELECT 1 FROM rooms WHERE codename = ?)")
+                    .bind(&candidate)
+                    .fetch_one(&self.pool)
+                    .await
+                    .map_err(anyhow::Error::from)?;
+            if !exists {
+                break candidate;
+            }
+        };
+
+        // HACK: query!() drops temporaries for some reason, must pass reference
+        let (channel_id, user_id) = (&channel_id.to_string(), &user_id.to_string());
+        let res = sqlx::query!(
+            "INSERT INTO rooms (codename, channel_id, user_id) VALUES (?, ?, ?)",
+            codename,
+            channel_id,
+            user_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(anyhow::Error::from)?;
+
+        assert_eq!(res.rows_affected(), 1);
+        Ok(())
+    }
+
     async fn execute_command(
         &self,
         ctx: &Context,
