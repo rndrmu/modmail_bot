@@ -8,8 +8,17 @@ use serenity::{
         gateway::Ready,
         guild::Role,
         id::{ChannelId, GuildId, RoleId, UserId},
-        interactions::application_command::{ApplicationCommandOptionType, ApplicationCommandType},
+        interactions::{
+            application_command::{
+                ApplicationCommandInteraction,
+                ApplicationCommandInteractionDataOptionValue as OptionValue,
+                ApplicationCommandOptionType, ApplicationCommandType,
+            },
+            Interaction,
+        },
     },
+    prelude::Mentionable,
+    utils::Color,
 };
 use sqlx::{FromRow, SqlitePool};
 
@@ -139,6 +148,149 @@ impl Bot {
             .map_err(anyhow::Error::from)?;
         Ok(())
     }
+
+    async fn execute_command(
+        &self,
+        ctx: &Context,
+        cmd: &ApplicationCommandInteraction,
+    ) -> Result<String> {
+        let perms = cmd.member.as_ref().unwrap().permissions.unwrap();
+        match cmd.data.name.as_str() {
+            "blockrole" => {
+                if !perms.manage_roles() {
+                    return Err(BotError::UserError(
+                        "You don't have `Manage Roles` permission.".into(),
+                    ));
+                }
+
+                let sub = cmd.data.options.get(0).unwrap();
+                match sub.name.as_str() {
+                    "set" => {
+                        let role = sub.options.get(0).unwrap().resolved.as_ref().unwrap();
+                        if let OptionValue::Role(role) = role {
+                            self.set_blockrole(role).await?;
+                            Ok(format!("Set block role to `{}`.", role.name.as_str()))
+                        } else {
+                            panic!("got wrong option value")
+                        }
+                    }
+
+                    "unset" => {
+                        self.unset_blockrole().await?;
+                        Ok("Unset block role.".into())
+                    }
+
+                    _ => Err(BotError::UnknownCommand(format!(
+                        "{} {}",
+                        &cmd.data.name, &sub.name
+                    ))),
+                }
+            }
+
+            "inbox" => {
+                if !perms.manage_channels() {
+                    return Err(BotError::UserError(
+                        "You don't have `Manage Channels` permission.".into(),
+                    ));
+                }
+
+                let sub = cmd.data.options.get(0).unwrap();
+                match sub.name.as_str() {
+                    "set" => {
+                        let raw = sub.options.get(0).unwrap().resolved.as_ref().unwrap();
+                        if let OptionValue::Channel(channel) = raw {
+                            self.set_inbox(channel).await?;
+                            Ok(format!("Set inbox to {}.", channel.id.mention()))
+                        } else {
+                            panic!("got wrong option value")
+                        }
+                    }
+
+                    "unset" => {
+                        self.unset_inbox().await?;
+                        Ok("Unset inbox.".into())
+                    }
+
+                    _ => Err(BotError::UnknownCommand(format!(
+                        "{} {}",
+                        &cmd.data.name, &sub.name
+                    ))),
+                }
+            }
+
+            "block" => {
+                if !perms.manage_roles() {
+                    return Err(BotError::UserError(
+                        "You don't have `Manage Roles` permission.".into(),
+                    ));
+                }
+
+                let role = self.get_blockrole().await.and_then(|opt| {
+                    opt.ok_or_else(|| BotError::UserError("There's no block role defined.".into()))
+                })?;
+
+                let codename = cmd.data.options.get(0).unwrap().resolved.as_ref().unwrap();
+                if let OptionValue::String(codename) = codename {
+                    let room = self.room_from_codename(codename).await.and_then(|opt| {
+                        opt.ok_or_else(|| {
+                            BotError::UserError(format!(
+                                "No thread with codename `{}` found.",
+                                codename
+                            ))
+                        })
+                    })?;
+
+                    let mut member = self.guild.member(&ctx, room.user_id).await.map_err(|_| {
+                        BotError::UserError(
+                            "User is not a member or the server is unavailable.".into(),
+                        )
+                    })?;
+
+                    member.add_role(&ctx, role).await.map_err(|_| {
+                        BotError::UserError(
+                            "Missing permissions or configured block role is invalid.".into(),
+                        )
+                    })?;
+
+                    Ok(format!("Blocked `{}`.", &codename))
+                } else {
+                    panic!("got wrong option value")
+                }
+            }
+
+            "close" => {
+                if !perms.manage_channels() {
+                    return Err(BotError::UserError(
+                        "You don't have `Manage Channels` permission.".into(),
+                    ));
+                }
+
+                let codename = cmd.data.options.get(0).unwrap().resolved.as_ref().unwrap();
+                if let OptionValue::String(codename) = codename {
+                    let room = self.room_from_codename(codename).await.and_then(|opt| {
+                        opt.ok_or_else(|| {
+                            BotError::UserError(format!(
+                                "No thread with codename `{}` found.",
+                                codename
+                            ))
+                        })
+                    })?;
+
+                    let _ = room
+                        .channel_id
+                        .edit_thread(&ctx, |edit| edit.locked(true))
+                        .await;
+
+                    self.delete_room(room.room_id).await?;
+                    Ok(format!("Locked `{}` and removed attached user.", &codename))
+                } else {
+                    panic!("got wrong option value")
+                }
+            }
+
+            _ => Err(BotError::UnknownCommand(cmd.data.name.clone())),
+        }
+    }
 }
 
 #[async_trait]
@@ -214,6 +366,28 @@ impl EventHandler for Bot {
             })
             .await
             .expect("failed to register commands");
+    }
+
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        if let Some(cmd) = interaction.application_command() {
+            let res = self.execute_command(&ctx, &cmd).await;
+            let (color, desc) = match res {
+                Ok(msg) => (Color::DARK_GREEN, msg),
+                Err(msg) => (Color::DARK_RED, msg.to_string()),
+            };
+
+            cmd.create_interaction_response(&ctx, |res| {
+                res.interaction_response_data(|data| {
+                    data.embed(|emb| {
+                        emb.description(desc)
+                            .color(color)
+                            .footer(|foot| foot.text("With \u{2764} from the post office."))
+                    })
+                })
+            })
+            .await
+            .expect("failed to send interaction response");
+        }
     }
 }
 
