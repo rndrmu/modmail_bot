@@ -401,6 +401,7 @@ impl EventHandler for Bot {
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Some(cmd) = interaction.application_command() {
+            assert_eq!(cmd.guild_id.unwrap(), self.guild);
             let res = self.execute_command(&ctx, &cmd).await;
             let (color, desc) = match res {
                 Ok(msg) => (Color::DARK_GREEN, msg),
