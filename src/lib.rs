@@ -65,12 +65,10 @@ impl Bot {
     }
 
     async fn unset_config(&self, key: &str) -> Result<()> {
-        let res = sqlx::query!("DELETE FROM config WHERE key = ?", key)
+        sqlx::query!("DELETE FROM config WHERE key = ?", key)
             .execute(&self.pool)
             .await
             .map_err(anyhow::Error::from)?;
-
-        assert_eq!(res.rows_affected(), 1u64);
         Ok(())
     }
 
