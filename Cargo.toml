@@ -33,7 +33,7 @@ features = ["runtime-tokio-rustls", "sqlite", "macros", "migrate"]
 
 [dependencies.tokio]
 version = "1.17"
-features = ["rt", "rt-multi-thread", "macros", "sync"]
+features = ["rt", "rt-multi-thread", "macros", "sync", "signal"]
 
 [profile.release]
 strip = true
