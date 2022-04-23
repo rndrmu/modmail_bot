@@ -391,6 +391,12 @@ impl Bot {
                         .map_err(anyhow::Error::from)?
                 };
 
+                let content = MessageBuilder::new().push_safe(&msg.content).build();
+                thread
+                    .send_message(ctx, |createmsg| createmsg.content(content))
+                    .await
+                    .map_err(anyhow::Error::from)?;
+
                 self.new_room(&codename, thread.id.0, msg.author.id.0)
                     .await?;
 
