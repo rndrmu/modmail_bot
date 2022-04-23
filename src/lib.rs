@@ -494,7 +494,9 @@ impl EventHandler for Bot {
             let (color, desc) = match res {
                 Ok(msg) => (Color::DARK_GREEN, msg),
                 Err(err) => {
-                    tracing::error!(source = ?err, "Error while handling interaction.");
+                    if let BotError::InternalError(ref err) = err {
+                        tracing::error!(source = ?err, "Error while handling interaction.");
+                    }
                     (Color::DARK_RED, err.to_string())
                 }
             };
@@ -530,7 +532,11 @@ impl EventHandler for Bot {
                         .expect("failed to send interaction response");
                 }
             }
-            Err(err) => tracing::error!(source = ?err, "Error while handling message."),
+            Err(err) => {
+                if let BotError::InternalError(err) = err {
+                    tracing::error!(source = ?err, "Error while handling message.");
+                }
+            }
         }
     }
 
