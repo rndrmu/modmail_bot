@@ -306,11 +306,14 @@ impl Bot {
 
                     let _ = room
                         .channel_id
-                        .edit_thread(ctx, |edit| edit.locked(true))
+                        .edit_thread(ctx, |edit| edit.archived(true))
                         .await;
 
                     self.delete_room(room.room_id).await?;
-                    Ok(format!("Locked `{}` and removed attached user.", &codename))
+                    Ok(format!(
+                        "Archived `{}` and removed attached user.",
+                        &codename
+                    ))
                 } else {
                     panic!("got wrong option value")
                 }
