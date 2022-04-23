@@ -131,6 +131,14 @@ impl Bot {
                 .map(|rt| Room::try_from(rt).expect("got malformed thread from database")),
         )
     }
+
+    async fn delete_room(&self, room_id: i64) -> Result<()> {
+        sqlx::query!("DELETE FROM rooms WHERE room_id = ?", room_id)
+            .execute(&self.pool)
+            .await
+            .map_err(anyhow::Error::from)?;
+        Ok(())
+    }
 }
 
 #[async_trait]
