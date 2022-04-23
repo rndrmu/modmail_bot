@@ -402,7 +402,10 @@ impl EventHandler for Bot {
             let res = self.execute_command(&ctx, &cmd).await;
             let (color, desc) = match res {
                 Ok(msg) => (Color::DARK_GREEN, msg),
-                Err(msg) => (Color::DARK_RED, msg.to_string()),
+                Err(err) => {
+                    tracing::error!(source = ?err, "Error while handling interaction.");
+                    (Color::DARK_RED, err.to_string())
+                }
             };
 
             cmd.create_interaction_response(&ctx, |res| {
