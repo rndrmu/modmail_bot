@@ -26,6 +26,7 @@ Discord bot for contacting a server's moderators easily and anonymously.
 ### Running
 
 * [Create a new application at Discord Developers if you haven't already.](https://discord.com/developers/applications)
+
 * Create a `.env` file next to the executable with the following contents.
   ```sh
   # your discord API token
@@ -41,6 +42,7 @@ Discord bot for contacting a server's moderators easily and anonymously.
   # https://docs.rs/env_logger/latest/env_logger/#enabling-logging
   RUST_LOG=info
   ```
+
 * Run the executable.
 
 ## License
