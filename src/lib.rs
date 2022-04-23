@@ -102,7 +102,7 @@ impl Bot {
         self.unset_config("inbox").await
     }
 
-    async fn find_codename(&self, codename: &str) -> Result<Option<Room>> {
+    async fn room_from_codename(&self, codename: &str) -> Result<Option<Room>> {
         Ok(
             sqlx::query_as!(RawRoom, "SELECT * FROM rooms WHERE codename = ?", codename)
                 .fetch_optional(&self.pool)
@@ -112,7 +112,7 @@ impl Bot {
         )
     }
 
-    async fn find_channel(&self, id: u64) -> Result<Option<Room>> {
+    async fn room_from_channel(&self, id: u64) -> Result<Option<Room>> {
         let temp = &id.to_string();
         Ok(
             sqlx::query_as!(RawRoom, "SELECT * FROM rooms WHERE channel_id = ?", temp)
@@ -123,7 +123,7 @@ impl Bot {
         )
     }
 
-    async fn find_user(&self, id: u64) -> Result<Option<Room>> {
+    async fn room_from_user(&self, id: u64) -> Result<Option<Room>> {
         let temp = &id.to_string();
         Ok(
             sqlx::query_as!(RawRoom, "SELECT * FROM rooms WHERE user_id = ?", temp)
