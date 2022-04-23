@@ -166,6 +166,17 @@ impl Bot {
         Ok(())
     }
 
+    async fn check_codename_exists(&self, codename: &str) -> Result<bool> {
+        // HACK: macro doesn't work, treats EXISTS() as a column name
+        let (exists,): (bool,) =
+            sqlx::query_as("SELECT EXISTS(SELECT 1 FROM rooms WHERE codename = ?)")
+                .bind(codename)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(anyhow::Error::from)?;
+        Ok(exists)
+    }
+
     async fn execute_command(
         &self,
         ctx: &Context,
