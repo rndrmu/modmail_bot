@@ -521,7 +521,7 @@ impl EventHandler for Bot {
                         .expect("failed to send interaction response");
                 }
             }
-            Err(err) => tracing::error!(source = %err, "Error while handling message."),
+            Err(err) => tracing::error!(source = ?err, "Error while handling message."),
         }
     }
 }
