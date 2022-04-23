@@ -4,7 +4,7 @@ use serenity::{
     async_trait,
     client::{Context, EventHandler},
     model::{
-        channel::{ChannelType, PartialChannel},
+        channel::{ChannelType, Message, PartialChannel},
         gateway::Ready,
         guild::Role,
         id::{ChannelId, GuildId, RoleId, UserId},
@@ -18,7 +18,7 @@ use serenity::{
         },
     },
     prelude::Mentionable,
-    utils::Color,
+    utils::{Color, MessageBuilder},
 };
 use sqlx::{FromRow, SqlitePool};
 
@@ -319,6 +319,88 @@ impl Bot {
             _ => Err(BotError::UnknownCommand(cmd.data.name.clone())),
         }
     }
+
+    async fn handle_message(&self, ctx: &Context, msg: &Message) -> Result<Option<String>> {
+        if msg.author.id == ctx.cache.current_user().id {
+            return Ok(None);
+        }
+
+        if let Some(guild) = msg.guild_id {
+            let room = match self.room_from_channel(msg.channel_id.0).await? {
+                Some(room) => room,
+                None => return Ok(None),
+            };
+
+            let content = MessageBuilder::new().push_safe(&msg.content).build();
+            room.user_id
+                .create_dm_channel(ctx)
+                .await
+                .map_err(anyhow::Error::from)?
+                .send_message(ctx, |msg| msg.content(content))
+                .await
+                .map_err(anyhow::Error::from)?;
+
+            Ok(None)
+        } else {
+            match self.get_blockrole().await? {
+                Some(role) => {
+                    let blocked = msg
+                        .author
+                        .has_role(ctx, self.guild, role)
+                        .await
+                        .map_err(anyhow::Error::from)?;
+
+                    if blocked {
+                        return Ok(Some("You have been blocked by a server admin.".into()));
+                    }
+                }
+
+                None => (),
+            }
+
+            if let Some(room) = self.room_from_user(msg.author.id.0).await? {
+                let content = MessageBuilder::new().push_safe(&msg.content).build();
+                room.channel_id
+                    .send_message(ctx, |createmsg| createmsg.content(content))
+                    .await
+                    .map_err(anyhow::Error::from)?;
+
+                Ok(None)
+            } else {
+                let inbox = match self.get_inbox().await? {
+                    Some(inbox) => inbox,
+                    None => return Ok(None),
+                };
+
+                let codename = loop {
+                    let candidate = petname::petname(2, " ");
+                    if !self.check_codename_exists(&candidate).await? {
+                        break candidate;
+                    }
+                };
+
+                let thread = {
+                    let inbox_msg = inbox
+                        .say(ctx, "Got mail from new user.")
+                        .await
+                        .map_err(anyhow::Error::from)?;
+
+                    inbox
+                        .create_public_thread(ctx, inbox_msg.id, |thread| thread.name(&codename))
+                        .await
+                        .map_err(anyhow::Error::from)?
+                };
+
+                self.new_room(&codename, thread.id.0, msg.author.id.0)
+                    .await?;
+
+                Ok(Some(format!(
+                    "You've been assigned the codename `{}`.",
+                    &codename
+                )))
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -419,6 +501,27 @@ impl EventHandler for Bot {
             })
             .await
             .expect("failed to send interaction response");
+        }
+    }
+
+    async fn message(&self, ctx: Context, msg: Message) {
+        let res = self.handle_message(&ctx, &msg).await;
+        match res {
+            Ok(content) => {
+                if let Some(content) = content {
+                    msg.channel_id
+                        .send_message(&ctx, |send| {
+                            send.reference_message(&msg).embed(|emb| {
+                                emb.color(Color::BLURPLE)
+                                    .description(content)
+                                    .footer(|foot| foot.text("With \u{2764} from the post office."))
+                            })
+                        })
+                        .await
+                        .expect("failed to send interaction response");
+                }
+            }
+            Err(err) => tracing::error!(source = %err, "Error while handling message."),
         }
     }
 }
