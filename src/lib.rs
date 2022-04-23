@@ -102,37 +102,35 @@ impl Bot {
         self.unset_config("inbox").await
     }
 
-    async fn find_codename(&self, codename: &str) -> Result<Option<Thread>> {
-        Ok(sqlx::query_as!(
-            RawThread,
-            "SELECT * FROM threads WHERE codename = ?",
-            codename
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(anyhow::Error::from)?
-        .map(|rt| Thread::try_from(rt).expect("got malformed thread from database")))
-    }
-
-    async fn find_thread(&self, id: u64) -> Result<Option<Thread>> {
-        let temp = &id.to_string();
+    async fn find_codename(&self, codename: &str) -> Result<Option<Room>> {
         Ok(
-            sqlx::query_as!(RawThread, "SELECT * FROM threads WHERE thread = ?", temp)
+            sqlx::query_as!(RawRoom, "SELECT * FROM rooms WHERE codename = ?", codename)
                 .fetch_optional(&self.pool)
                 .await
                 .map_err(anyhow::Error::from)?
-                .map(|rt| Thread::try_from(rt).expect("got malformed thread from database")),
+                .map(|rt| Room::try_from(rt).expect("got malformed thread from database")),
         )
     }
 
-    async fn find_user(&self, id: u64) -> Result<Option<Thread>> {
+    async fn find_channel(&self, id: u64) -> Result<Option<Room>> {
         let temp = &id.to_string();
         Ok(
-            sqlx::query_as!(RawThread, "SELECT * FROM threads WHERE user = ?", temp)
+            sqlx::query_as!(RawRoom, "SELECT * FROM rooms WHERE channel_id = ?", temp)
                 .fetch_optional(&self.pool)
                 .await
                 .map_err(anyhow::Error::from)?
-                .map(|rt| Thread::try_from(rt).expect("got malformed thread from database")),
+                .map(|rt| Room::try_from(rt).expect("got malformed thread from database")),
+        )
+    }
+
+    async fn find_user(&self, id: u64) -> Result<Option<Room>> {
+        let temp = &id.to_string();
+        Ok(
+            sqlx::query_as!(RawRoom, "SELECT * FROM rooms WHERE user_id = ?", temp)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(anyhow::Error::from)?
+                .map(|rt| Room::try_from(rt).expect("got malformed thread from database")),
         )
     }
 }
@@ -214,26 +212,29 @@ impl EventHandler for Bot {
 }
 
 #[derive(FromRow)]
-struct RawThread {
+struct RawRoom {
+    room_id: i64,
     codename: String,
-    thread: String,
-    user: String,
+    channel_id: String,
+    user_id: String,
 }
 
-struct Thread {
+struct Room {
+    room_id: i64,
     codename: String,
-    thread: ChannelId,
-    user: UserId,
+    channel_id: ChannelId,
+    user_id: UserId,
 }
 
-impl TryFrom<RawThread> for Thread {
+impl TryFrom<RawRoom> for Room {
     type Error = ParseIntError;
 
-    fn try_from(value: RawThread) -> StdResult<Self, Self::Error> {
+    fn try_from(value: RawRoom) -> StdResult<Self, Self::Error> {
         Ok(Self {
+            room_id: value.room_id,
             codename: value.codename,
-            thread: value.thread.parse::<u64>()?.into(),
-            user: value.user.parse::<u64>()?.into(),
+            channel_id: value.channel_id.parse::<u64>()?.into(),
+            user_id: value.user_id.parse::<u64>()?.into(),
         })
     }
 }

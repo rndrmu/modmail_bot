@@ -2,8 +2,9 @@ CREATE TABLE config (
     key TEXT NOT NULL PRIMARY KEY,
     value TEXT NOT NULL
 );
-CREATE TABLE threads (
+CREATE TABLE rooms (
+    room_id INTEGER NOT NULL PRIMARY KEY,
     codename TEXT NOT NULL UNIQUE,
-    thread TEXT NOT NULL UNIQUE,
-    user TEXT NOT NULL UNIQUE
+    channel_id TEXT NOT NULL UNIQUE,
+    user_id TEXT NOT NULL UNIQUE
 );
