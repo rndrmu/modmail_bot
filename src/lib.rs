@@ -328,23 +328,7 @@ impl Bot {
             return Ok(None);
         }
 
-        if let Some(guild) = msg.guild_id {
-            let room = match self.room_from_channel(msg.channel_id.0).await? {
-                Some(room) => room,
-                None => return Ok(None),
-            };
-
-            let content = MessageBuilder::new().push_safe(&msg.content).build();
-            room.user_id
-                .create_dm_channel(ctx)
-                .await
-                .map_err(anyhow::Error::from)?
-                .send_message(ctx, |msg| msg.content(content))
-                .await
-                .map_err(anyhow::Error::from)?;
-
-            Ok(None)
-        } else {
+        if msg.is_private() {
             match self.get_blockrole().await? {
                 Some(role) => {
                     let blocked = msg
@@ -408,6 +392,22 @@ impl Bot {
                     &codename
                 )))
             }
+        } else {
+            let room = match self.room_from_channel(msg.channel_id.0).await? {
+                Some(room) => room,
+                None => return Ok(None),
+            };
+
+            let content = MessageBuilder::new().push_safe(&msg.content).build();
+            room.user_id
+                .create_dm_channel(ctx)
+                .await
+                .map_err(anyhow::Error::from)?
+                .send_message(ctx, |msg| msg.content(content))
+                .await
+                .map_err(anyhow::Error::from)?;
+
+            Ok(None)
         }
     }
 }
