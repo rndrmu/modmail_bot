@@ -110,8 +110,8 @@ impl Bot {
         )
     }
 
-    async fn room_from_channel(&self, id: u64) -> Result<Option<Room>> {
-        let temp = &id.to_string();
+    async fn room_from_channel(&self, channel_id: u64) -> Result<Option<Room>> {
+        let temp = &channel_id.to_string();
         Ok(
             sqlx::query_as!(RawRoom, "SELECT * FROM rooms WHERE channel_id = ?", temp)
                 .fetch_optional(&self.pool)
@@ -121,8 +121,8 @@ impl Bot {
         )
     }
 
-    async fn room_from_user(&self, id: u64) -> Result<Option<Room>> {
-        let temp = &id.to_string();
+    async fn room_from_user(&self, user_id: u64) -> Result<Option<Room>> {
+        let temp = &user_id.to_string();
         Ok(
             sqlx::query_as!(RawRoom, "SELECT * FROM rooms WHERE user_id = ?", temp)
                 .fetch_optional(&self.pool)
