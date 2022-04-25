@@ -36,5 +36,5 @@ version = "1.17"
 features = ["rt", "rt-multi-thread", "macros", "sync", "signal"]
 
 [profile.release]
-strip = true
 lto = true
+strip = true

@@ -304,6 +304,29 @@ impl Bot {
                         })
                     })?;
 
+                    // notify user of thread closure 
+
+                    let usr = room.user_id.to_user(ctx).await.map_err(|_| {
+                        BotError::UserError(
+                            "User is not a member or the server is unavailable.".into(),
+                        )
+                    })?;
+
+                    usr.direct_message(ctx, |f| {
+                        f.embed(|e| {
+                            e.title("Thread closed");
+                            e.description(format!(
+                                "The thread with codename `{}` has been closed.",
+                                codename
+                            ));
+                            e
+                        })
+                    }).await.map_err(|_| {
+                        BotError::UserError(
+                            "DM Failed".into(),
+                        )
+                    })?;
+
                     let _ = room
                         .channel_id
                         .edit_thread(ctx, |edit| edit.archived(true))
@@ -368,7 +391,15 @@ impl Bot {
 
                 let thread = {
                     let inbox_msg = inbox
-                        .say(ctx, "Got mail from new user.")
+                        .send_message(ctx, |f| {
+                            f.content("New thread created.")
+                                .embed(|e| {
+                                    e.title("New Modmail Received")
+                                    .field("Creator", format!("{}, ({})", &msg.author.mention(), &msg.author.tag()), true)
+                                    .field("Codename", &codename, true)
+                                })
+                            
+                        })
                         .await
                         .map_err(anyhow::Error::from)?;
 
@@ -380,7 +411,15 @@ impl Bot {
 
                 let content = MessageBuilder::new().push_safe(&msg.content).build();
                 thread
-                    .send_message(ctx, |createmsg| createmsg.content(content))
+                    .send_message(ctx, |createmsg| {
+                        createmsg.embed(|f| {
+                            f.author(|a|{
+                                a.name(&msg.author.tag())
+                                .icon_url(&msg.author.face())
+                            })
+                            .description(&content)
+                        })
+                    })
                     .await
                     .map_err(anyhow::Error::from)?;
 
