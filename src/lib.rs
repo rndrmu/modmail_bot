@@ -118,29 +118,31 @@ impl Bot {
                 .fetch_optional(&self.pool)
                 .await
                 .map_err(anyhow::Error::from)?
-                .map(|rt| Room::try_from(rt).expect("got malformed thread from database")),
+                .map(|rt| Room::try_from(rt).expect("got malformed Room object from database")),
         )
     }
 
     async fn room_from_channel(&self, channel_id: u64) -> Result<Option<Room>> {
+        // HACK: query!() drops temporaries for some reason, must pass reference
         let temp = &channel_id.to_string();
         Ok(
             sqlx::query_as!(RawRoom, "SELECT * FROM rooms WHERE channel_id = ?", temp)
                 .fetch_optional(&self.pool)
                 .await
                 .map_err(anyhow::Error::from)?
-                .map(|rt| Room::try_from(rt).expect("got malformed thread from database")),
+                .map(|rt| Room::try_from(rt).expect("got malformed Room object from database")),
         )
     }
 
     async fn room_from_user(&self, user_id: u64) -> Result<Option<Room>> {
+        // HACK: query!() drops temporaries for some reason, must pass reference
         let temp = &user_id.to_string();
         Ok(
             sqlx::query_as!(RawRoom, "SELECT * FROM rooms WHERE user_id = ?", temp)
                 .fetch_optional(&self.pool)
                 .await
                 .map_err(anyhow::Error::from)?
-                .map(|rt| Room::try_from(rt).expect("got malformed thread from database")),
+                .map(|rt| Room::try_from(rt).expect("got malformed Room object from database")),
         )
     }
 
