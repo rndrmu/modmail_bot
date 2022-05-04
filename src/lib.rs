@@ -1,5 +1,8 @@
+mod error;
+
 use std::{num::ParseIntError, result::Result as StdResult};
 
+use error::{Error, Result};
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
@@ -21,21 +24,6 @@ use serenity::{
     utils::{Color, MessageBuilder},
 };
 use sqlx::{FromRow, SqlitePool};
-
-#[derive(thiserror::Error, Debug)]
-enum BotError {
-    #[error("{0}")]
-    UserError(String),
-    #[error(
-        "You sent an unimplemented command. Please file an issue: {}/issues",
-        env!("CARGO_PKG_REPOSITORY")
-    )]
-    UnknownCommand(String),
-    #[error("There was an error processing your command.")]
-    InternalError(#[from] anyhow::Error),
-}
-
-type Result<T> = StdResult<T, BotError>;
 
 pub struct Bot {
     guild: GuildId,
@@ -191,7 +179,7 @@ impl Bot {
         match cmd.data.name.as_str() {
             "blockrole" => {
                 if !perms.manage_roles() {
-                    return Err(BotError::UserError(
+                    return Err(Error::User(
                         "You don't have `Manage Roles` permission.".into(),
                     ));
                 }
@@ -213,7 +201,7 @@ impl Bot {
                         Ok("Unset block role.".into())
                     }
 
-                    _ => Err(BotError::UnknownCommand(format!(
+                    _ => Err(Error::UnknownCommand(format!(
                         "{} {}",
                         &cmd.data.name, &sub.name
                     ))),
@@ -222,7 +210,7 @@ impl Bot {
 
             "inbox" => {
                 if !perms.manage_channels() {
-                    return Err(BotError::UserError(
+                    return Err(Error::User(
                         "You don't have `Manage Channels` permission.".into(),
                     ));
                 }
@@ -244,7 +232,7 @@ impl Bot {
                         Ok("Unset inbox.".into())
                     }
 
-                    _ => Err(BotError::UnknownCommand(format!(
+                    _ => Err(Error::UnknownCommand(format!(
                         "{} {}",
                         &cmd.data.name, &sub.name
                     ))),
@@ -253,34 +241,29 @@ impl Bot {
 
             "block" => {
                 if !perms.manage_roles() {
-                    return Err(BotError::UserError(
+                    return Err(Error::User(
                         "You don't have `Manage Roles` permission.".into(),
                     ));
                 }
 
                 let role = self.get_blockrole().await.and_then(|opt| {
-                    opt.ok_or_else(|| BotError::UserError("There's no block role defined.".into()))
+                    opt.ok_or_else(|| Error::User("There's no block role defined.".into()))
                 })?;
 
                 let codename = cmd.data.options.get(0).unwrap().resolved.as_ref().unwrap();
                 if let OptionValue::String(codename) = codename {
                     let room = self.room_from_codename(codename).await.and_then(|opt| {
                         opt.ok_or_else(|| {
-                            BotError::UserError(format!(
-                                "No thread with codename `{}` found.",
-                                codename
-                            ))
+                            Error::User(format!("No thread with codename `{}` found.", codename))
                         })
                     })?;
 
                     let mut member = self.guild.member(ctx, room.user_id).await.map_err(|_| {
-                        BotError::UserError(
-                            "User is not a member or the server is unavailable.".into(),
-                        )
+                        Error::User("User is not a member or the server is unavailable.".into())
                     })?;
 
                     member.add_role(ctx, role).await.map_err(|_| {
-                        BotError::UserError(
+                        Error::User(
                             "Missing permissions or configured block role is invalid.".into(),
                         )
                     })?;
@@ -293,7 +276,7 @@ impl Bot {
 
             "close" => {
                 if !perms.manage_channels() {
-                    return Err(BotError::UserError(
+                    return Err(Error::User(
                         "You don't have `Manage Channels` permission.".into(),
                     ));
                 }
@@ -302,10 +285,7 @@ impl Bot {
                 if let OptionValue::String(codename) = codename {
                     let room = self.room_from_codename(codename).await.and_then(|opt| {
                         opt.ok_or_else(|| {
-                            BotError::UserError(format!(
-                                "No thread with codename `{}` found.",
-                                codename
-                            ))
+                            Error::User(format!("No thread with codename `{}` found.", codename))
                         })
                     })?;
 
@@ -324,7 +304,7 @@ impl Bot {
                 }
             }
 
-            _ => Err(BotError::UnknownCommand(cmd.data.name.clone())),
+            _ => Err(Error::UnknownCommand(cmd.data.name.clone())),
         }
     }
 
@@ -499,7 +479,7 @@ impl EventHandler for Bot {
             let (color, desc) = match res {
                 Ok(msg) => (Color::DARK_GREEN, msg),
                 Err(err) => {
-                    if let BotError::InternalError(ref err) = err {
+                    if let Error::Internal(ref err) = err {
                         tracing::error!(source = ?err, "Error while handling interaction.");
                     }
                     (Color::DARK_RED, err.to_string())
@@ -538,7 +518,7 @@ impl EventHandler for Bot {
                 }
             }
             Err(err) => {
-                if let BotError::InternalError(err) = err {
+                if let Error::Internal(err) = err {
                     tracing::error!(source = ?err, "Error while handling message.");
                 }
             }
