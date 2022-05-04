@@ -1,3 +1,4 @@
+mod database;
 mod error;
 
 use std::{num::ParseIntError, result::Result as StdResult};
