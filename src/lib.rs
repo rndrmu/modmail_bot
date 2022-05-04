@@ -26,7 +26,10 @@ use sqlx::{FromRow, SqlitePool};
 enum BotError {
     #[error("{0}")]
     UserError(String),
-    #[error("You sent an unknown command. Please contact the developer.")]
+    #[error(
+        "You sent an unimplemented command. Please file an issue: {}/issues",
+        env!("CARGO_PKG_REPOSITORY")
+    )]
     UnknownCommand(String),
     #[error("There was an error processing your command.")]
     InternalError(#[from] anyhow::Error),
