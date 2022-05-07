@@ -89,3 +89,51 @@ impl Display for Inbox {
 impl ConfigKey for Inbox {
     type Value = ChannelId;
 }
+
+#[cfg(test)]
+mod tests {
+    use serenity::model::id::{ChannelId, RoleId};
+    use sqlx::SqlitePool;
+
+    use super::{Blockrole, Config, Inbox};
+
+    #[tokio::test]
+    async fn config_crud() {
+        // Setup
+        let config = {
+            let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+            sqlx::migrate!().run(&pool).await.unwrap();
+            Config::new(pool)
+        };
+
+        // Create
+        config.set(Blockrole, RoleId(123)).await.unwrap();
+        config.set(Inbox, ChannelId(456)).await.unwrap();
+
+        // Get
+        let blockrole = config.get(Blockrole).await.unwrap().unwrap();
+        let inbox = config.get(Inbox).await.unwrap().unwrap();
+        assert_eq!(blockrole, RoleId(123));
+        assert_eq!(inbox, ChannelId(456));
+
+        // Update
+        config.set(Blockrole, RoleId(321)).await.unwrap();
+        config.set(Inbox, ChannelId(654)).await.unwrap();
+
+        // Get
+        let blockrole = config.get(Blockrole).await.unwrap().unwrap();
+        let inbox = config.get(Inbox).await.unwrap().unwrap();
+        assert_eq!(blockrole, RoleId(321));
+        assert_eq!(inbox, ChannelId(654));
+
+        // Delete
+        config.unset(Blockrole).await.unwrap();
+        config.unset(Inbox).await.unwrap();
+
+        // Get
+        let blockrole = config.get(Blockrole).await.unwrap();
+        let inbox = config.get(Inbox).await.unwrap();
+        assert_eq!(blockrole, None);
+        assert_eq!(inbox, None);
+    }
+}
