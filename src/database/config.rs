@@ -18,7 +18,7 @@ impl Config {
         Self(pool)
     }
 
-    pub async fn get<T>(&self, key: &T) -> Result<Option<T::Value>>
+    pub async fn get<T>(&self, key: T) -> Result<Option<T::Value>>
     where
         T: ConfigKey,
         <<T as ConfigKey>::Value as FromStr>::Err: Debug,
@@ -34,7 +34,7 @@ impl Config {
             }))
     }
 
-    pub async fn set<T>(&self, key: &T, value: &T::Value) -> Result<()>
+    pub async fn set<T>(&self, key: T, value: T::Value) -> Result<()>
     where
         T: ConfigKey,
     {
@@ -53,7 +53,7 @@ impl Config {
         Ok(())
     }
 
-    pub async fn unset<T>(&self, key: &T) -> Result<()>
+    pub async fn unset<T>(&self, key: T) -> Result<()>
     where
         T: ConfigKey,
     {
